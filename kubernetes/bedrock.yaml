@@ -1,0 +1,134 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: minecraft
+  labels:
+    app: mc-bedrock
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: minecraft-bedrock
+  namespace: minecraft
+  labels:
+    role: service-config
+    app: mc-bedrock
+data:
+  # Find more options at https://github.com/itzg/docker-minecraft-bedrock-server#server-properties
+  # Remove # from in front of line if changing from default values.
+  EULA: "TRUE" # Must accept EULA to use this minecraft server
+  #GAMEMODE: "survival" # Options: survival, creative, adventure
+  #DIFFICULTY: "easy" # Options: peaceful, easy, normal, hard
+  #DEFAULT_PLAYER_PERMISSION_LEVEL: "member" # Options: visitor, member, operator
+  LEVEL_NAME: "hopcroft_minecraft_world"
+  #LEVEL_SEED: "33480944"
+  SERVER_NAME: "hopatech_minecraft_server_bedrock"
+  #SERVER_PORT: "19132"
+  #LEVEL_TYPE: "DEFAULT" # Options: FLAT, LEGACY, DEFAULT
+  #ALLOW_CHEATS: "false" # Options: true, false
+  #MAX_PLAYERS: "10"
+  #PLAYER_IDLE_TIMEOUT: "30"
+  #TEXTUREPACK_REQUIRED: "false" # Options: true, false
+  #
+  ## Changing these will have a security impact
+  #ONLINE_MODE: "true" # Options: true, false (removes Xbox Live account requirements)
+  #WHITE_LIST: "false" # If enabled, need to provide a whitelist.json by your own means. 
+  #
+  ## Changing these will have a performance impact
+  #VIEW_DISTANCE: "10"
+  #TICK_DISTANCE: "4"
+  #MAX_THREADS: "8"
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: mc-bedrock
+  name: mc-bedrock
+  namespace: minecraft
+spec:
+  # never more than 1 since mc-bedrock is not horizontally scalable
+  replicas: 1
+  serviceName: mc-bedrock
+  selector:
+    matchLabels:
+      app: mc-bedrock
+  template:
+    metadata:
+      labels:
+        app: mc-bedrock
+    spec:
+      containers:
+        - name: main
+          image: itzg/minecraft-bedrock-server
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: minecraft-bedrock
+          volumeMounts:
+            - mountPath: /data
+              name: data
+          ports:
+            - containerPort: 19132
+              protocol: UDP
+          readinessProbe: &probe
+            exec:
+              command:
+                - mc-monitor
+                - status-bedrock
+                - --host
+                # force health check against IPv4 port
+                - 127.0.0.1
+            initialDelaySeconds: 30
+          livenessProbe: *probe
+          tty: true
+          stdin: true
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1"
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+---
+# Azure AKS
+apiVersion: v1
+kind: Service
+metadata:
+  name: mc-bedrock
+  namespace: minecraft  
+  # annotations:
+  #   service.beta.kubernetes.io/azure-load-balancer-resource-group: "minecraft" # Replace "minecraft" with your actual Azure resource group name
+  #   service.beta.kubernetes.io/azure-load-balancer-ipv4: "${azurerm_public_ip.minecraft.ip_address}" # Terraform will inject the IP
+spec:
+  selector:
+    app: mc-bedrock
+  ports:
+    - port: 19132
+      protocol: UDP
+  type: LoadBalancer # Used for Azure AKS to expose the service externally with a public IP
+# ---
+# # docker-desktop
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: mc-bedrock
+# spec:
+#   selector:
+#     app: mc-bedrock
+#   type: NodePort # Used for local development with Docker Desktop to expose the service on a specific port of the host machine
+#   ports:
+#     - name: bedrock
+protocol: UDP
+#       port: 19132           # Port exposed by the service
+#       targetPort: 19132     # Port your container listens on
+#       nodePort: 30132       # Port on the host (your local machine)
