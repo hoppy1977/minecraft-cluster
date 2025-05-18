@@ -8,9 +8,9 @@
 # Crash logs
 crash.log
 
-# Variable files with sensitive data
-*.tfvars
-*.tfvars.json
+# # Variable files with sensitive data
+# *.tfvars
+# *.tfvars.json
 
 # Override files (commonly used locally)
 override.tf
