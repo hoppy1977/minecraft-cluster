@@ -105,7 +105,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: mc-bedrock
-  namespace: minecraft  
+  namespace: minecraft
   # annotations:
   #   service.beta.kubernetes.io/azure-load-balancer-resource-group: "minecraft" # Replace "minecraft" with your actual Azure resource group name
   #   service.beta.kubernetes.io/azure-load-balancer-ipv4: "${azurerm_public_ip.minecraft.ip_address}" # Terraform will inject the IP
@@ -128,7 +128,7 @@ spec:
 #   type: NodePort # Used for local development with Docker Desktop to expose the service on a specific port of the host machine
 #   ports:
 #     - name: bedrock
-protocol: UDP
+#       protocol: UDP
 #       port: 19132           # Port exposed by the service
 #       targetPort: 19132     # Port your container listens on
 #       nodePort: 30132       # Port on the host (your local machine)
